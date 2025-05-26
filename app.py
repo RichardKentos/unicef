@@ -49,67 +49,71 @@ def load_data(uploaded_file):
 
 uploaded_file = st.file_uploader("Upload a CSV file", type="csv")
 
-# Use default file if nothing uploaded
 if uploaded_file is not None:
     df = load_data(uploaded_file)
+
+    # All your data processing and charting code goes here...
+    st.success("File successfully uploaded and processed.")
+    
+    # --------------------
+    # DASHBOARD VISUALS
+    if not df.empty:
+        # --- Monthly Donations ---
+        monthly_donations = df.set_index("DonationDate")["AmountEUR"].resample("ME").sum()
+        monthly_donations.index = monthly_donations.index.strftime('%Y-%m')
+        st.subheader("📅 Total Donation Amount by Month")
+        st.bar_chart(monthly_donations)
+
+        # --- Top Campaigns ---
+        campaign_totals = df.groupby("Campaign")["AmountEUR"].sum().sort_values(ascending=False)
+        top_5 = campaign_totals.head(5).sort_values()  # ascending=True for horizontal bar sort
+
+        st.subheader("🏆 Top 5 Campaigns by Donation Amount")
+        top_chart = alt.Chart(top_5.reset_index()).mark_bar(color=main_color).encode(
+            x=alt.X("AmountEUR:Q", title="Total Donations (€)"),
+            y=alt.Y("Campaign:N", sort="-x", title="Campaign"),
+            tooltip=["Campaign", "AmountEUR"]
+        ).properties(height=200)
+        st.altair_chart(top_chart, use_container_width=True)
+
+        # --- Bottom Campaigns ---
+        bottom_5 = campaign_totals.tail(5).sort_values()  # ascending=True for horizontal bar sort
+
+        st.subheader("📉 Bottom 5 Campaigns by Donation Amount")
+        bottom_chart = alt.Chart(bottom_5.reset_index()).mark_bar(color=main_color).encode(
+            x=alt.X("AmountEUR:Q", title="Total Donations (€)"),
+            y=alt.Y("Campaign:N", sort="-x", title="Campaign"),
+            tooltip=["Campaign", "AmountEUR"]
+        ).properties(height=200)
+        st.altair_chart(bottom_chart, use_container_width=True)
+
+        # --- Frequency Pie Chart ---
+        st.subheader("⏱️ Donation Frequency Distribution")
+        freq_counts = df["Frequency"].value_counts().reset_index()
+        freq_counts.columns = ["Frequency", "Count"]
+        pie = alt.Chart(freq_counts).mark_arc(innerRadius=50).encode(
+            theta="Count",
+            color=alt.Color("Frequency", scale=alt.Scale(range=[main_color, "#ddd"])),
+            tooltip=["Frequency", "Count"]
+        ).properties(width=300, height=300)
+        st.altair_chart(pie, use_container_width=True)
+
+        # --- Donor Type Visuals ---
+        col1, col2 = st.columns(2)
+
+        with col1:
+            donor_counts = df["DonorType"].value_counts()
+            st.subheader("👥 Number of Donations by Donor Type")
+            st.bar_chart(donor_counts)
+
+        with col2:
+            donation_sums = df.groupby("DonorType")["AmountEUR"].sum().sort_values(ascending=False)
+            st.subheader("💶 Total Donation Amount by Donor Type")
+            st.bar_chart(donation_sums)
+
+    else:
+        st.warning("No data loaded. Please upload a CSV file or ensure the data is correctly formatted.")
+
 else:
-    df = load_data("donations_all_time.csv")
+    st.info("Please upload a CSV file to see the dashboard.")
 
-# --------------------
-# DASHBOARD VISUALS
-if not df.empty:
-    # --- Monthly Donations ---
-    monthly_donations = df.set_index("DonationDate")["AmountEUR"].resample("M").sum()
-    monthly_donations.index = monthly_donations.index.strftime('%Y-%m')
-    st.subheader("📅 Total Donation Amount by Month")
-    st.bar_chart(monthly_donations)
-
-    # --- Top Campaigns ---
-    campaign_totals = df.groupby("Campaign")["AmountEUR"].sum().sort_values(ascending=False)
-    top_5 = campaign_totals.head(5).sort_values()  # ascending=True for horizontal bar sort
-
-    st.subheader("🏆 Top 5 Campaigns by Donation Amount")
-    top_chart = alt.Chart(top_5.reset_index()).mark_bar(color=main_color).encode(
-        x=alt.X("AmountEUR:Q", title="Total Donations (€)"),
-        y=alt.Y("Campaign:N", sort="-x", title="Campaign"),
-        tooltip=["Campaign", "AmountEUR"]
-    ).properties(height=200)
-    st.altair_chart(top_chart, use_container_width=True)
-
-    # --- Bottom Campaigns ---
-    bottom_5 = campaign_totals.tail(5).sort_values()  # ascending=True for horizontal bar sort
-
-    st.subheader("📉 Bottom 5 Campaigns by Donation Amount")
-    bottom_chart = alt.Chart(bottom_5.reset_index()).mark_bar(color=main_color).encode(
-        x=alt.X("AmountEUR:Q", title="Total Donations (€)"),
-        y=alt.Y("Campaign:N", sort="-x", title="Campaign"),
-        tooltip=["Campaign", "AmountEUR"]
-    ).properties(height=200)
-    st.altair_chart(bottom_chart, use_container_width=True)
-
-    # --- Frequency Pie Chart ---
-    st.subheader("⏱️ Donation Frequency Distribution")
-    freq_counts = df["Frequency"].value_counts().reset_index()
-    freq_counts.columns = ["Frequency", "Count"]
-    pie = alt.Chart(freq_counts).mark_arc(innerRadius=50).encode(
-        theta="Count",
-        color=alt.Color("Frequency", scale=alt.Scale(range=[main_color, "#ddd"])),
-        tooltip=["Frequency", "Count"]
-    ).properties(width=300, height=300)
-    st.altair_chart(pie, use_container_width=True)
-
-    # --- Donor Type Visuals ---
-    col1, col2 = st.columns(2)
-
-    with col1:
-        donor_counts = df["DonorType"].value_counts()
-        st.subheader("👥 Number of Donations by Donor Type")
-        st.bar_chart(donor_counts)
-
-    with col2:
-        donation_sums = df.groupby("DonorType")["AmountEUR"].sum().sort_values(ascending=False)
-        st.subheader("💶 Total Donation Amount by Donor Type")
-        st.bar_chart(donation_sums)
-
-else:
-    st.warning("No data loaded. Please upload a CSV file or ensure the data is correctly formatted.")
