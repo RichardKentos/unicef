@@ -110,6 +110,31 @@ if uploaded_file is not None:
             donation_sums = df.groupby("DonorType")["AmountEUR"].sum().sort_values(ascending=False)
             st.subheader("💶 Total Donation Amount by Donor Type")
             st.bar_chart(donation_sums)
+            
+        # --- RFM Analysis ---
+        df = df[df['PaymentStatus'] == 'Úspešná']
+        today = df['DonationDate'].max() + pd.Timedelta(days=1)
+
+        rfm = df.groupby('Email').agg({
+            'DonationDate': lambda x: (today - x.max()).days,
+            'Email': 'count',
+            'AmountEUR': 'sum'
+        }).rename(columns={
+            'DonationDate': 'Recency (days)',
+            'Email': 'Frequency',
+            'AmountEUR': 'Monetary (€)'
+        }).reset_index()
+
+        # Display in Streamlit
+        st.header("📊 RFM Analysis (Recency, Frequency, Monetary)")
+
+        st.write("""
+        This table shows how recently each donor donated (Recency), how often they donated (Frequency),
+        and how much they donated in total (Monetary).
+        """)
+
+        st.dataframe(rfm.sort_values(by='Monetary (€)', ascending=False), use_container_width=True)
+
 
     else:
         st.warning("No data loaded. Please upload a CSV file or ensure the data is correctly formatted.")
